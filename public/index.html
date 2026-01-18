@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Yuklab Olish | HD 1080p+</title>
+    <meta name="description" content="YouTube videolarini 1080p, 1440p va 4K sifatda yuklab oling. Bepul va tez!">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="bg-gradient"></div>
+        <div class="bg-particles"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                    </svg>
+                </div>
+                <span class="logo-text">YT<span class="highlight">Downloader</span></span>
+            </div>
+            <p class="tagline">YouTube videolarini yuqori sifatda yuklab oling</p>
+        </header>
+
+        <!-- Main Card -->
+        <main class="main-card">
+            <!-- URL Input Section -->
+            <div class="input-section">
+                <label for="url-input" class="input-label">YouTube Video URL</label>
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="url-input" 
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        autocomplete="off"
+                    >
+                    <button id="clear-btn" class="clear-btn" title="Tozalash">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quality Selection -->
+            <div class="quality-section">
+                <label class="input-label">Video Sifati</label>
+                <div class="quality-options">
+                    <label class="quality-option">
+                        <input type="radio" name="quality" value="1080" checked>
+                        <span class="quality-card">
+                            <span class="quality-badge">HD</span>
+                            <span class="quality-value">1080p</span>
+                            <span class="quality-desc">Full HD</span>
+                        </span>
+                    </label>
+                    <label class="quality-option">
+                        <input type="radio" name="quality" value="1440">
+                        <span class="quality-card">
+                            <span class="quality-badge hd">2K</span>
+                            <span class="quality-value">1440p</span>
+                            <span class="quality-desc">Quad HD</span>
+                        </span>
+                    </label>
+                    <label class="quality-option">
+                        <input type="radio" name="quality" value="2160">
+                        <span class="quality-card">
+                            <span class="quality-badge ultra">4K</span>
+                            <span class="quality-value">2160p</span>
+                            <span class="quality-desc">Ultra HD</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Get Info Button -->
+            <button id="get-info-btn" class="primary-btn">
+                <span class="btn-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                </span>
+                <span class="btn-text">Video Ma'lumotlarini Olish</span>
+                <span class="btn-loader"></span>
+            </button>
+
+            <!-- Error Message -->
+            <div id="error-message" class="error-message hidden">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span id="error-text"></span>
+            </div>
+
+            <!-- Video Preview -->
+            <div id="video-preview" class="video-preview hidden">
+                <div class="preview-thumbnail">
+                    <img id="video-thumbnail" src="" alt="Video thumbnail">
+                    <div class="duration-badge" id="video-duration">00:00</div>
+                </div>
+                <div class="preview-info">
+                    <h2 id="video-title" class="video-title"></h2>
+                    <div class="video-meta">
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                            <span id="video-channel"></span>
+                        </span>
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                            <span id="video-views"></span>
+                        </span>
+                    </div>
+                    
+                    <!-- Download Button -->
+                    <button id="download-btn" class="download-btn">
+                        <span class="btn-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </span>
+                        <span class="btn-text">Yuklab Olish</span>
+                        <span class="btn-loader"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Download Progress -->
+            <div id="download-progress" class="download-progress hidden">
+                <div class="progress-header">
+                    <span class="progress-title">Yuklanmoqda...</span>
+                    <span class="progress-percent" id="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <p class="progress-hint">Video tayyorlanmoqda, iltimos kuting...</p>
+            </div>
+
+            <!-- Success Message -->
+            <div id="success-message" class="success-message hidden">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h3>Muvaffaqiyatli!</h3>
+                <p>Video yuklab olindi</p>
+            </div>
+        </main>
+
+        <!-- Features -->
+        <section class="features">
+            <div class="feature">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                    </svg>
+                </div>
+                <h3>4K Sifat</h3>
+                <p>2160p gacha yuqori sifatda yuklab oling</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5v-5l-2.28 2.28C6.92 18 5 15.21 5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/>
+                    </svg>
+                </div>
+                <h3>Tez Yuklash</h3>
+                <p>Optimallashtirilgan server bilan tez yuklash</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                    </svg>
+                </div>
+                <h3>Xavfsiz</h3>
+                <p>Fayllar avtomatik o'chiriladi</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2024 YTDownloader. Barcha huquqlar himoyalangan.</p>
+            <p class="disclaimer">Faqat shaxsiy foydalanish uchun. Mualliflik huquqlariga rioya qiling.</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
