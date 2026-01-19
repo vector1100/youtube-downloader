@@ -20,9 +20,11 @@ const videoViews = document.getElementById('video-views');
 
 // State
 let currentVideoInfo = null;
+let currentVideoUrl = null;
 
-// API Base URL
-const API_BASE = '';
+// Cobalt API - Free and open-source YouTube download API
+// Using a public instance
+const COBALT_API = 'https://api.cobalt.tools';
 
 // ===== Utility Functions =====
 
@@ -39,6 +41,7 @@ function hideError() {
 }
 
 function formatNumber(num) {
+    if (!num) return '0';
     if (num >= 1000000000) {
         return (num / 1000000000).toFixed(1) + 'B';
     }
@@ -84,6 +87,20 @@ function resetUI() {
     successMessage.classList.add('hidden');
     hideError();
     currentVideoInfo = null;
+    currentVideoUrl = null;
+}
+
+function extractVideoId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
 }
 
 // ===== Event Listeners =====
@@ -98,7 +115,6 @@ clearBtn.addEventListener('click', () => {
 // URL input - handle paste
 urlInput.addEventListener('paste', () => {
     setTimeout(() => {
-        // Auto-fetch info when pasting
         if (urlInput.value.trim()) {
             getVideoInfo();
         }
@@ -129,39 +145,45 @@ async function getVideoInfo() {
     }
 
     // Basic YouTube URL validation
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
-    if (!youtubeRegex.test(url)) {
+    const videoId = extractVideoId(url);
+    if (!videoId) {
         showError('Iltimos, to\'g\'ri YouTube URL kiriting');
         return;
     }
 
     resetUI();
     setButtonLoading(getInfoBtn, true);
+    currentVideoUrl = url;
 
     try {
-        const response = await fetch(`${API_BASE}/api/info`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ url })
-        });
+        // Use YouTube's oEmbed API for basic info (no API key needed)
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+
+        const response = await fetch(oembedUrl);
+
+        if (!response.ok) {
+            throw new Error('Video topilmadi');
+        }
 
         const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Xatolik yuz berdi');
-        }
-
         // Store video info
-        currentVideoInfo = data;
+        currentVideoInfo = {
+            title: data.title,
+            channel: data.author_name,
+            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+            videoId: videoId
+        };
 
         // Update UI
-        videoThumbnail.src = data.thumbnail;
-        videoTitle.textContent = data.title;
-        videoDuration.textContent = formatDuration(data.duration);
-        videoChannel.textContent = data.channel || 'Noma\'lum';
-        videoViews.textContent = formatNumber(data.view_count) + ' ko\'rishlar';
+        videoThumbnail.src = currentVideoInfo.thumbnail;
+        videoThumbnail.onerror = () => {
+            videoThumbnail.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        };
+        videoTitle.textContent = currentVideoInfo.title;
+        videoDuration.textContent = '--:--';
+        videoChannel.textContent = currentVideoInfo.channel;
+        videoViews.textContent = '';
 
         // Show preview
         videoPreview.classList.remove('hidden');
@@ -175,42 +197,63 @@ async function getVideoInfo() {
 }
 
 async function downloadVideo() {
-    const url = urlInput.value.trim();
-    const quality = getSelectedQuality();
-
-    if (!url || !currentVideoInfo) {
+    if (!currentVideoUrl || !currentVideoInfo) {
         showError('Avval video ma\'lumotlarini oling');
         return;
     }
+
+    const quality = getSelectedQuality();
 
     setButtonLoading(downloadBtn, true);
     downloadProgress.classList.remove('hidden');
     successMessage.classList.add('hidden');
 
-    // Simulate progress (since we can't track actual progress from backend)
+    // Start progress animation
     let progress = 0;
+    progressFill.style.width = '0%';
+    progressPercent.textContent = '0%';
+
     const progressInterval = setInterval(() => {
         if (progress < 90) {
-            progress += Math.random() * 10;
+            progress += Math.random() * 15;
             progress = Math.min(progress, 90);
             progressFill.style.width = progress + '%';
             progressPercent.textContent = Math.round(progress) + '%';
         }
-    }, 500);
+    }, 300);
 
     try {
-        const response = await fetch(`${API_BASE}/api/download`, {
+        // Map quality to Cobalt format
+        let videoQuality;
+        switch (quality) {
+            case '2160': videoQuality = '2160'; break;
+            case '1440': videoQuality = '1440'; break;
+            case '1080':
+            default: videoQuality = '1080'; break;
+        }
+
+        // Call Cobalt API
+        const response = await fetch(`${COBALT_API}/api/json`, {
             method: 'POST',
             headers: {
+                'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ url, quality })
+            body: JSON.stringify({
+                url: currentVideoUrl,
+                vCodec: 'h264',
+                vQuality: videoQuality,
+                aFormat: 'mp3',
+                filenamePattern: 'basic',
+                isAudioOnly: false,
+                disableMetadata: false
+            })
         });
 
         const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Yuklab olishda xatolik');
+        if (data.status === 'error') {
+            throw new Error(data.text || 'Yuklab olishda xatolik');
         }
 
         // Complete progress
@@ -218,24 +261,28 @@ async function downloadVideo() {
         progressFill.style.width = '100%';
         progressPercent.textContent = '100%';
 
-        // Trigger download
-        const videoTitle = currentVideoInfo.title || 'video';
-        const downloadUrl = `${data.downloadUrl}?title=${encodeURIComponent(videoTitle)}`;
+        // Get download URL
+        let downloadUrl = null;
 
-        // Create hidden link and click it
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `${videoTitle}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        if (data.status === 'redirect' || data.status === 'stream') {
+            downloadUrl = data.url;
+        } else if (data.status === 'picker' && data.picker) {
+            // Multiple formats available, get the first video
+            downloadUrl = data.picker[0]?.url;
+        }
+
+        if (!downloadUrl) {
+            throw new Error('Yuklab olish havolasi topilmadi');
+        }
+
+        // Open download in new tab
+        window.open(downloadUrl, '_blank');
 
         // Show success
         setTimeout(() => {
             downloadProgress.classList.add('hidden');
             successMessage.classList.remove('hidden');
 
-            // Hide success after 5 seconds
             setTimeout(() => {
                 successMessage.classList.add('hidden');
             }, 5000);
@@ -245,7 +292,16 @@ async function downloadVideo() {
         console.error('Error:', error);
         clearInterval(progressInterval);
         downloadProgress.classList.add('hidden');
-        showError(error.message || 'Video yuklab olishda xatolik');
+
+        // Provide alternative download method
+        const fallbackUrl = `https://www.y2mate.com/youtube/${currentVideoInfo.videoId}`;
+        showError(`API xatolik: ${error.message}. Alternativ usul: y2mate.com`);
+
+        // Open fallback
+        if (confirm('Cobalt API ishlamadi. Y2mate.com orqali yuklashni xohlaysizmi?')) {
+            window.open(fallbackUrl, '_blank');
+        }
+
     } finally {
         setButtonLoading(downloadBtn, false);
     }
@@ -258,7 +314,7 @@ window.addEventListener('load', () => {
     urlInput.focus();
 });
 
-// Handle visibility change (to pause animations when hidden)
+// Handle visibility change
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         document.body.style.animationPlayState = 'paused';
