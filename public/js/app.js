@@ -22,9 +22,12 @@ const videoViews = document.getElementById('video-views');
 let currentVideoInfo = null;
 let currentVideoUrl = null;
 
-// Cobalt API - Free and open-source YouTube download API
-// Using a public instance
-const COBALT_API = 'https://api.cobalt.tools';
+// Multiple Cobalt API instances to try (fallback system)
+const COBALT_INSTANCES = [
+    'https://api.cobalt.tools',
+    'https://co.wuk.sh',
+    'https://cobalt-api.hyper.lol'
+];
 
 // ===== Utility Functions =====
 
@@ -33,7 +36,7 @@ function showError(message) {
     errorMessage.classList.remove('hidden');
     setTimeout(() => {
         errorMessage.classList.add('hidden');
-    }, 5000);
+    }, 8000);
 }
 
 function hideError() {
@@ -196,6 +199,70 @@ async function getVideoInfo() {
     }
 }
 
+// Try to download using Cobalt API with fallback instances
+async function tryDownloadWithCobalt(url, quality) {
+    let videoQuality;
+    switch (quality) {
+        case '2160': videoQuality = '2160'; break;
+        case '1440': videoQuality = '1440'; break;
+        case '1080':
+        default: videoQuality = '1080'; break;
+    }
+
+    for (const apiBase of COBALT_INSTANCES) {
+        try {
+            console.log(`Trying Cobalt instance: ${apiBase}`);
+
+            const response = await fetch(`${apiBase}/api/json`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: url,
+                    vCodec: 'h264',
+                    vQuality: videoQuality,
+                    aFormat: 'mp3',
+                    filenamePattern: 'basic',
+                    isAudioOnly: false,
+                    disableMetadata: false
+                })
+            });
+
+            if (!response.ok) {
+                console.log(`Instance ${apiBase} returned ${response.status}`);
+                continue;
+            }
+
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                console.log(`Instance ${apiBase} returned error: ${data.text}`);
+                continue;
+            }
+
+            // Get download URL
+            let downloadUrl = null;
+
+            if (data.status === 'redirect' || data.status === 'stream') {
+                downloadUrl = data.url;
+            } else if (data.status === 'picker' && data.picker) {
+                downloadUrl = data.picker[0]?.url;
+            }
+
+            if (downloadUrl) {
+                return { success: true, url: downloadUrl, instance: apiBase };
+            }
+        } catch (error) {
+            console.log(`Instance ${apiBase} failed:`, error.message);
+            continue;
+        }
+    }
+
+    return { success: false };
+}
+
 async function downloadVideo() {
     if (!currentVideoUrl || !currentVideoInfo) {
         showError('Avval video ma\'lumotlarini oling');
@@ -214,93 +281,54 @@ async function downloadVideo() {
     progressPercent.textContent = '0%';
 
     const progressInterval = setInterval(() => {
-        if (progress < 90) {
-            progress += Math.random() * 15;
-            progress = Math.min(progress, 90);
+        if (progress < 85) {
+            progress += Math.random() * 10;
+            progress = Math.min(progress, 85);
             progressFill.style.width = progress + '%';
             progressPercent.textContent = Math.round(progress) + '%';
         }
-    }, 300);
+    }, 400);
 
     try {
-        // Map quality to Cobalt format
-        let videoQuality;
-        switch (quality) {
-            case '2160': videoQuality = '2160'; break;
-            case '1440': videoQuality = '1440'; break;
-            case '1080':
-            default: videoQuality = '1080'; break;
-        }
+        // Try Cobalt API instances
+        const result = await tryDownloadWithCobalt(currentVideoUrl, quality);
 
-        // Call Cobalt API
-        const response = await fetch(`${COBALT_API}/api/json`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: currentVideoUrl,
-                vCodec: 'h264',
-                vQuality: videoQuality,
-                aFormat: 'mp3',
-                filenamePattern: 'basic',
-                isAudioOnly: false,
-                disableMetadata: false
-            })
-        });
+        if (result.success) {
+            // Complete progress
+            clearInterval(progressInterval);
+            progressFill.style.width = '100%';
+            progressPercent.textContent = '100%';
 
-        const data = await response.json();
+            // Open download in new tab
+            window.open(result.url, '_blank');
 
-        if (data.status === 'error') {
-            throw new Error(data.text || 'Yuklab olishda xatolik');
-        }
-
-        // Complete progress
-        clearInterval(progressInterval);
-        progressFill.style.width = '100%';
-        progressPercent.textContent = '100%';
-
-        // Get download URL
-        let downloadUrl = null;
-
-        if (data.status === 'redirect' || data.status === 'stream') {
-            downloadUrl = data.url;
-        } else if (data.status === 'picker' && data.picker) {
-            // Multiple formats available, get the first video
-            downloadUrl = data.picker[0]?.url;
-        }
-
-        if (!downloadUrl) {
-            throw new Error('Yuklab olish havolasi topilmadi');
-        }
-
-        // Open download in new tab
-        window.open(downloadUrl, '_blank');
-
-        // Show success
-        setTimeout(() => {
-            downloadProgress.classList.add('hidden');
-            successMessage.classList.remove('hidden');
-
+            // Show success
             setTimeout(() => {
-                successMessage.classList.add('hidden');
-            }, 5000);
-        }, 500);
+                downloadProgress.classList.add('hidden');
+                successMessage.classList.remove('hidden');
+
+                setTimeout(() => {
+                    successMessage.classList.add('hidden');
+                }, 5000);
+            }, 500);
+        } else {
+            throw new Error('Barcha API lar ishlamadi');
+        }
 
     } catch (error) {
         console.error('Error:', error);
         clearInterval(progressInterval);
         downloadProgress.classList.add('hidden');
 
-        // Provide alternative download method
-        const fallbackUrl = `https://www.y2mate.com/youtube/${currentVideoInfo.videoId}`;
-        showError(`API xatolik: ${error.message}. Alternativ usul: y2mate.com`);
+        // Open alternative service directly
+        const videoId = currentVideoInfo.videoId;
+        const ssyoutubeUrl = `https://www.ssyoutube.com/watch?v=${videoId}`;
 
-        // Open fallback
-        if (confirm('Cobalt API ishlamadi. Y2mate.com orqali yuklashni xohlaysizmi?')) {
-            window.open(fallbackUrl, '_blank');
-        }
+        showError('API vaqtinchalik ishlamayapti. Alternativ sahifa ochilmoqda...');
+
+        setTimeout(() => {
+            window.open(ssyoutubeUrl, '_blank');
+        }, 1500);
 
     } finally {
         setButtonLoading(downloadBtn, false);
