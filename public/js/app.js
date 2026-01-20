@@ -299,8 +299,14 @@ async function downloadVideo() {
             progressFill.style.width = '100%';
             progressPercent.textContent = '100%';
 
-            // Open download in new tab
-            window.open(result.url, '_blank');
+            // Trigger download seamlessly
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = result.url;
+            a.setAttribute('download', '');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
 
             // Show success
             setTimeout(() => {
@@ -312,23 +318,14 @@ async function downloadVideo() {
                 }, 5000);
             }, 500);
         } else {
-            throw new Error('Barcha API lar ishlamadi');
+            throw new Error('Serverlar band. Iltimos 1 daqiqadan so\'ng qayta urining.');
         }
 
     } catch (error) {
         console.error('Error:', error);
         clearInterval(progressInterval);
         downloadProgress.classList.add('hidden');
-
-        // Open alternative service directly
-        const videoId = currentVideoInfo.videoId;
-        const ssyoutubeUrl = `https://www.ssyoutube.com/watch?v=${videoId}`;
-
-        showError('API vaqtinchalik ishlamayapti. Alternativ sahifa ochilmoqda...');
-
-        setTimeout(() => {
-            window.open(ssyoutubeUrl, '_blank');
-        }, 1500);
+        showError(error.message || 'Yuklab olishda xatolik yuz berdi');
 
     } finally {
         setButtonLoading(downloadBtn, false);
