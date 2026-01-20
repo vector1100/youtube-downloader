@@ -24,9 +24,11 @@ let currentVideoUrl = null;
 
 // Multiple Cobalt API instances to try (fallback system)
 const COBALT_INSTANCES = [
-    'https://api.cobalt.tools',
-    'https://co.wuk.sh',
-    'https://cobalt-api.hyper.lol'
+    'https://cobalt.clxxped.lol',
+    'https://cobalt.meowing.de',
+    'https://qwkuns.me',
+    'https://cobalt.canine.tools',
+    'https://dl.woof.monster'
 ];
 
 // ===== Utility Functions =====
