@@ -52,11 +52,15 @@ app.post('/api/info', async (req, res) => {
     }
 
     try {
-        const command = `yt-dlp --dump-json "${url}"`;
+        const command = `yt-dlp --dump-json --no-playlist --no-check-certificates --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" --referer "https://www.youtube.com/" "${url}"`;
 
         exec(command, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
                 console.error('yt-dlp error:', stderr);
+                // Check for specific YouTube errors
+                if (stderr.includes('Sign in to confirm')) {
+                    return res.status(403).json({ error: 'YouTube server blokladi (Bot detection). Iltimos keyinroq urining.' });
+                }
                 return res.status(500).json({ error: 'Video ma\'lumotlarini olishda xatolik' });
             }
 
@@ -149,6 +153,9 @@ app.post('/api/download', async (req, res) => {
             '--no-playlist',
             '--progress',
             '--verbose',
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            '--referer', 'https://www.youtube.com/',
+            '--no-check-certificates',
             url
         ];
 
