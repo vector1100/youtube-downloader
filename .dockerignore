@@ -1,0 +1,9 @@
+node_modules
+downloads
+.git
+.gitignore
+README.md
+task.md
+implementation_plan.md
+walkthrough.md
+vercel.json
