@@ -20,16 +20,6 @@ const videoViews = document.getElementById('video-views');
 
 // State
 let currentVideoInfo = null;
-let currentVideoUrl = null;
-
-// Multiple Cobalt API instances to try (fallback system)
-const COBALT_INSTANCES = [
-    'https://cobalt.clxxped.lol',
-    'https://cobalt.meowing.de',
-    'https://qwkuns.me',
-    'https://cobalt.canine.tools',
-    'https://dl.woof.monster'
-];
 
 // ===== Utility Functions =====
 
@@ -38,7 +28,7 @@ function showError(message) {
     errorMessage.classList.remove('hidden');
     setTimeout(() => {
         errorMessage.classList.add('hidden');
-    }, 8000);
+    }, 5000);
 }
 
 function hideError() {
@@ -57,18 +47,6 @@ function formatNumber(num) {
         return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
-}
-
-function formatDuration(seconds) {
-    if (!seconds) return '00:00';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-
-    if (h > 0) {
-        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 function getSelectedQuality() {
@@ -92,20 +70,6 @@ function resetUI() {
     successMessage.classList.add('hidden');
     hideError();
     currentVideoInfo = null;
-    currentVideoUrl = null;
-}
-
-function extractVideoId(url) {
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
-    ];
-
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) return match[1];
-    }
-    return null;
 }
 
 // ===== Event Listeners =====
@@ -149,186 +113,108 @@ async function getVideoInfo() {
         return;
     }
 
-    // Basic YouTube URL validation
-    const videoId = extractVideoId(url);
-    if (!videoId) {
-        showError('Iltimos, to\'g\'ri YouTube URL kiriting');
-        return;
-    }
-
     resetUI();
     setButtonLoading(getInfoBtn, true);
-    currentVideoUrl = url;
 
     try {
-        // Use YouTube's oEmbed API for basic info (no API key needed)
-        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-
-        const response = await fetch(oembedUrl);
-
-        if (!response.ok) {
-            throw new Error('Video topilmadi');
-        }
+        const response = await fetch('/api/info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+        });
 
         const data = await response.json();
 
-        // Store video info
-        currentVideoInfo = {
-            title: data.title,
-            channel: data.author_name,
-            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-            videoId: videoId
-        };
+        if (!response.ok) {
+            throw new Error(data.error || 'Video ma\'lumotlarini olishda xatolik');
+        }
+
+        // Store info
+        currentVideoInfo = data;
 
         // Update UI
-        videoThumbnail.src = currentVideoInfo.thumbnail;
-        videoThumbnail.onerror = () => {
-            videoThumbnail.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        };
-        videoTitle.textContent = currentVideoInfo.title;
-        videoDuration.textContent = '--:--';
-        videoChannel.textContent = currentVideoInfo.channel;
-        videoViews.textContent = '';
+        videoThumbnail.src = data.thumbnail;
+        videoTitle.textContent = data.title;
+        videoDuration.textContent = data.duration_string || data.duration;
+        videoChannel.textContent = data.channel;
+        videoViews.textContent = formatNumber(data.view_count) + ' ko\'rishlar';
 
         // Show preview
         videoPreview.classList.remove('hidden');
 
     } catch (error) {
         console.error('Error:', error);
-        showError(error.message || 'Video ma\'lumotlarini olishda xatolik');
+        showError(error.message);
     } finally {
         setButtonLoading(getInfoBtn, false);
     }
 }
 
-// Try to download using Cobalt API with fallback instances
-async function tryDownloadWithCobalt(url, quality) {
-    let videoQuality;
-    switch (quality) {
-        case '2160': videoQuality = '2160'; break;
-        case '1440': videoQuality = '1440'; break;
-        case '1080':
-        default: videoQuality = '1080'; break;
-    }
-
-    for (const apiBase of COBALT_INSTANCES) {
-        try {
-            console.log(`Trying Cobalt instance: ${apiBase}`);
-
-            const response = await fetch(`${apiBase}/api/json`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    url: url,
-                    vCodec: 'h264',
-                    vQuality: videoQuality,
-                    aFormat: 'mp3',
-                    filenamePattern: 'basic',
-                    isAudioOnly: false,
-                    disableMetadata: false
-                })
-            });
-
-            if (!response.ok) {
-                console.log(`Instance ${apiBase} returned ${response.status}`);
-                continue;
-            }
-
-            const data = await response.json();
-
-            if (data.status === 'error') {
-                console.log(`Instance ${apiBase} returned error: ${data.text}`);
-                continue;
-            }
-
-            // Get download URL
-            let downloadUrl = null;
-
-            if (data.status === 'redirect' || data.status === 'stream') {
-                downloadUrl = data.url;
-            } else if (data.status === 'picker' && data.picker) {
-                downloadUrl = data.picker[0]?.url;
-            }
-
-            if (downloadUrl) {
-                return { success: true, url: downloadUrl, instance: apiBase };
-            }
-        } catch (error) {
-            console.log(`Instance ${apiBase} failed:`, error.message);
-            continue;
-        }
-    }
-
-    return { success: false };
-}
-
 async function downloadVideo() {
-    if (!currentVideoUrl || !currentVideoInfo) {
-        showError('Avval video ma\'lumotlarini oling');
-        return;
-    }
+    if (!currentVideoInfo) return;
 
+    const url = urlInput.value.trim();
     const quality = getSelectedQuality();
 
     setButtonLoading(downloadBtn, true);
     downloadProgress.classList.remove('hidden');
-    successMessage.classList.add('hidden');
 
-    // Start progress animation
-    let progress = 0;
+    // Reset progress
     progressFill.style.width = '0%';
     progressPercent.textContent = '0%';
 
+    // Simulate initial progress
+    let progress = 0;
     const progressInterval = setInterval(() => {
-        if (progress < 85) {
-            progress += Math.random() * 10;
-            progress = Math.min(progress, 85);
-            progressFill.style.width = progress + '%';
-            progressPercent.textContent = Math.round(progress) + '%';
+        if (progress < 90) {
+            progress += Math.random() * 5;
+            if (progress > 90) progress = 90;
+            progressFill.style.width = `${progress}%`;
+            progressPercent.textContent = `${Math.round(progress)}%`;
         }
-    }, 400);
+    }, 500);
 
     try {
-        // Try Cobalt API instances
-        const result = await tryDownloadWithCobalt(currentVideoUrl, quality);
+        const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url, quality })
+        });
 
-        if (result.success) {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Yuklab olishda xatolik');
+        }
+
+        if (data.success) {
             // Complete progress
             clearInterval(progressInterval);
             progressFill.style.width = '100%';
             progressPercent.textContent = '100%';
 
-            // Trigger download seamlessly
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = result.url;
-            a.setAttribute('download', '');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // Download file
+            window.location.href = `${data.downloadUrl}?title=${encodeURIComponent(currentVideoInfo.title)}`;
 
             // Show success
             setTimeout(() => {
                 downloadProgress.classList.add('hidden');
                 successMessage.classList.remove('hidden');
-
                 setTimeout(() => {
                     successMessage.classList.add('hidden');
-                }, 5000);
-            }, 500);
-        } else {
-            throw new Error('Serverlar band. Iltimos 1 daqiqadan so\'ng qayta urining.');
+                }, 3000);
+            }, 1000);
         }
 
     } catch (error) {
-        console.error('Error:', error);
         clearInterval(progressInterval);
+        console.error('Error:', error);
         downloadProgress.classList.add('hidden');
-        showError(error.message || 'Yuklab olishda xatolik yuz berdi');
-
+        showError(error.message);
     } finally {
         setButtonLoading(downloadBtn, false);
     }
@@ -339,13 +225,4 @@ async function downloadVideo() {
 // Focus input on load
 window.addEventListener('load', () => {
     urlInput.focus();
-});
-
-// Handle visibility change
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        document.body.style.animationPlayState = 'paused';
-    } else {
-        document.body.style.animationPlayState = 'running';
-    }
 });
