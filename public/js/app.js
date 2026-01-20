@@ -23,15 +23,17 @@ let currentVideoInfo = null;
 let currentVideoUrl = null;
 
 // Multiple Cobalt API instances to try (fallback system)
-// These are public instances that allow CORS
+// These are the ACTUAL API endpoints (not frontends) that support YouTube
+// Source: https://cobalt.directory/api/working?type=api
 const COBALT_INSTANCES = [
-    'https://cobalt.clxxped.lol',
-    'https://cobalt.meowing.de',
-    'https://qwkuns.me',
-    'https://cobalt.canine.tools',
-    'https://dl.woof.monster',
-    'https://api.cobalt.tools', // Official (often rate limited but good to have)
-    'https://cobalt-api.hyper.lol'
+    // YouTube-specific working APIs
+    'https://grapefruit.clxxped.lol',
+    'https://api.qwkuns.me',
+    'https://nuko-c.meowing.de',
+    // YouTube-shorts also supported (fallback)
+    'https://api.dl.woof.monster',
+    'https://subito-c.meowing.de',
+    'https://omega.wolfy.love'
 ];
 
 // ===== Utility Functions =====
