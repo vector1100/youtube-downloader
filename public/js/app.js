@@ -210,7 +210,8 @@ async function tryDownloadWithCobalt(url, quality) {
         try {
             console.log(`Trying Cobalt instance: ${apiBase}`);
 
-            const response = await fetch(`${apiBase}/api/json`, {
+            // Cobalt v10+ uses POST to root '/' instead of '/api/json'
+            const response = await fetch(apiBase, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -218,12 +219,9 @@ async function tryDownloadWithCobalt(url, quality) {
                 },
                 body: JSON.stringify({
                     url: url,
-                    vCodec: 'h264',
-                    vQuality: videoQuality,
-                    aFormat: 'mp3',
-                    filenamePattern: 'basic',
-                    isAudioOnly: false,
-                    disableMetadata: false
+                    videoQuality: videoQuality,
+                    filenameStyle: 'basic',
+                    downloadMode: 'auto'
                 })
             });
 
