@@ -22,10 +22,10 @@ const videoViews = document.getElementById('video-views');
 let currentVideoInfo = null;
 let currentVideoUrl = null;
 
-// Personal Cobalt API instance (forked and deployed on Render)
+// Personal Cobalt API instance (hosted on HuggingFace Spaces)
 // This is YOUR private server - no rate limits or JWT auth required!
 const COBALT_INSTANCES = [
-    'https://cobalt-api-58l4.onrender.com'
+    'https://said0912-cobalt-api.hf.space'
 ];
 
 // ===== Utility Functions =====
